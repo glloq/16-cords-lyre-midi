@@ -4,7 +4,7 @@
 # 16-cords-lyre-midi
 
 Le projet utilise une lyre de 16 cordes avec 16 servomoteurs qui viennent actionner la corde voulue en fonction des messages midi.
-  ![photo lyre](https://raw.githubusercontent.com/glloq/16-cords-lyre-midi/main/lyre.png?raw=true)
+  ![photo lyre](https://raw.githubusercontent.com/glloq/16-cords-lyre-midi/main/lyre.jpg?raw=true)
 
 # liste materiel
 
