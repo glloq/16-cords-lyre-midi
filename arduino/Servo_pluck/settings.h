@@ -15,10 +15,12 @@ fichiers pour la configuration du systeme
 #define NUM_SERVOS 16
 #define PLUCK_ANGLE 15
 #define SERIAL_BAUD_RATE 115200
+#define PIN_SERVO_OE 5  // Pin pour controler OE du PCA9685 (LOW=actif, HIGH=inactif)
 
 // Delais d'initialisation des servos (en millisecondes)
 #define SERVO_INIT_DELAY_MS 500
 #define SERVO_RESET_DELAY_MS 100
+#define SERVO_AUTO_DISABLE_TIMEOUT_MS 2000  // Desactiver apres 2s d'inactivite
 
 // Types de messages MIDI
 #define MIDI_NOTE_ON 0x90

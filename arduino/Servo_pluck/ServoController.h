@@ -17,12 +17,18 @@ private:
   uint8_t initServoIndex;
   unsigned long initLastTime;
 
+  // Variables pour la desactivation automatique
+  unsigned long lastActivityTime;
+  bool servosEnabled;
+
 public:
   ServoController();  // Initialise tous les servomoteurs et le tableau
   void update();  // A appeler dans loop() pour gerer l'initialisation non-bloquante
   bool isInitComplete();  // Retourne true quand l'initialisation est terminee
   void mute(uint8_t servoNum);  // Met le servo a l'angle d'initialisation contre la corde
   void pluck(uint8_t servoNum);  // Actionne le servo pour gratter la corde
+  void enableServos();  // Active les servos (OE = LOW)
+  void disableServos();  // Desactive les servos (OE = HIGH)
 };
 
 #endif // SERVOCONTROLLER_H

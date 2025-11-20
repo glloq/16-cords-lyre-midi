@@ -2,6 +2,10 @@
 #include "settings.h"
 
 ServoController::ServoController() {
+  // Configurer le pin OE
+  pinMode(PIN_SERVO_OE, OUTPUT);
+  enableServos();  // Activer les servos
+
   pwm = Adafruit_PWMServoDriver();
   if(pwm.begin() == false){
     Serial.println("ERREUR CRITIQUE: PCA9685 non detecte sur le bus I2C!");
@@ -22,6 +26,10 @@ ServoController::ServoController() {
   initState = INIT_OPENING;
   initServoIndex = 0;
   initLastTime = millis();
+
+  // Initialiser le timeout de desactivation
+  lastActivityTime = millis();
+  servosEnabled = true;
 }
 
 void ServoController::setServoAngle(uint8_t servoNum, uint16_t angle) {
@@ -83,10 +91,12 @@ void ServoController::update() {
       if (currentTime - initLastTime >= SERVO_RESET_DELAY_MS) {
         initServoIndex++;
         if (initServoIndex >= NUM_SERVOS) {
-          // Initialisation complete
+          // Initialisation complete - desactiver les servos pour economiser l'energie
+          disableServos();
           initState = INIT_COMPLETE;
           if (DEBUG) {
             Serial.println("[SERVO] Tous les servos sont initialises");
+            Serial.println("[SERVO] Servos desactives (economie d'energie)");
           }
         } else {
           initState = INIT_CLOSING;
@@ -96,7 +106,14 @@ void ServoController::update() {
 
     case INIT_IDLE:
     case INIT_COMPLETE:
-      // Ne rien faire
+      // Gerer la desactivation automatique apres timeout
+      if (servosEnabled && (currentTime - lastActivityTime >= SERVO_AUTO_DISABLE_TIMEOUT_MS)) {
+        disableServos();
+        servosEnabled = false;
+        if (DEBUG) {
+          Serial.println("[SERVO] Timeout - servos desactives");
+        }
+      }
       break;
   }
 }
@@ -110,11 +127,31 @@ void ServoController::resetServosPosition() {
 }
 
 void ServoController::mute(uint8_t servoNum) {
+  enableServos();  // Activer avant de bouger (reinitialise aussi le timeout)
   setServoAngle(servoNum, initialAngles[servoNum]);
+}
+
+void ServoController::enableServos() {
+  if (!servosEnabled) {
+    digitalWrite(PIN_SERVO_OE, LOW);  // OE actif bas
+    servosEnabled = true;
+    if (DEBUG) {
+      Serial.println("[SERVO] Servos actives");
+    }
+  }
+  lastActivityTime = millis();  // Reinitialiser le timeout
+}
+
+void ServoController::disableServos() {
+  digitalWrite(PIN_SERVO_OE, HIGH);  // OE inactif haut
+  servosEnabled = false;
 }
 
 //gratte la corde
 void ServoController::pluck(uint8_t servoNum) {
+  // Activer les servos avant de jouer
+  enableServos();
+
   // Actionne le servomoteur pour gratter la corde en fonction du dernier mouvement (position du pick)
   bool isEvenServo = (servoNum % 2 == 0);
   
