@@ -18,4 +18,21 @@ Le projet utilise une lyre de 16 cordes avec 16 servomoteurs qui viennent action
 - un passe cloison usb
 
 > [!TIP]
-> il est possible d'adapter le code pour fonctionner via bluetooth ou wifi !
+> Une version ESP32 avec Bluetooth BLE est disponible dans le dossier `arduino/Servo_pluck_ESP32_BLE/` !
+
+# Versions disponibles
+
+## Version Arduino Leonardo (USB MIDI)
+- **Dossier**: `arduino/Servo_pluck/`
+- **Communication**: MIDI via câble USB
+- **Carte**: Arduino Leonardo
+- **Avantages**: Simple, connexion stable, pas de configuration Bluetooth
+- **Utilisation**: Idéale pour un setup fixe connecté à un ordinateur
+
+## Version ESP32 (Bluetooth BLE MIDI)
+- **Dossier**: `arduino/Servo_pluck_ESP32_BLE/`
+- **Communication**: MIDI via Bluetooth Low Energy (sans fil)
+- **Carte**: ESP32 (tous modèles compatibles)
+- **Avantages**: Sans fil, connexion mobile (iOS/Android), portée ~10m
+- **Utilisation**: Parfaite pour un setup mobile ou contrôle depuis smartphone/tablette
+- **Documentation complète**: Voir `arduino/Servo_pluck_ESP32_BLE/README.md`
