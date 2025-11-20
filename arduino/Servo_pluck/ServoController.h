@@ -7,7 +7,7 @@
 class ServoController {
 private:
   Adafruit_PWMServoDriver pwm;
-  int16_t currentPositions[NUM_SERVOS];  // Tableau pour stocker le dernier mouvement 0 => -20° , 1=>+20°
+  uint16_t currentPositions;  // Bitfield pour stocker les positions (bit 0/1 pour chaque servo) - Economie: 30 bytes
   void setServoAngle(uint8_t servoNum, uint16_t angle);
   void resetServosPosition();  // Utilise au demarrage pour deplacer les servos en position init
 

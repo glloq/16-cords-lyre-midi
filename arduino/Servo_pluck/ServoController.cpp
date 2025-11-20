@@ -17,10 +17,8 @@ ServoController::ServoController() {
   pwm.setOscillatorFrequency(PCA9685_OSCILLATOR_FREQ);
   pwm.setPWMFreq(SERVO_FREQUENCY);
 
-  // Initialiser le tableau currentPositions
-  for (uint8_t i = 0; i < NUM_SERVOS; i++) {
-    currentPositions[i] = 0;
-  }
+  // Initialiser le bitfield currentPositions (tous les bits a 0)
+  currentPositions = 0;
 
   // Demarrer l'initialisation non-bloquante
   initState = INIT_OPENING;
@@ -33,6 +31,14 @@ ServoController::ServoController() {
 }
 
 void ServoController::setServoAngle(uint8_t servoNum, uint16_t angle) {
+  if (servoNum >= NUM_SERVOS) {
+    if (DEBUG) {
+      Serial.print("[SERVO] ERREUR: index servo invalide: ");
+      Serial.println(servoNum);
+    }
+    return;
+  }
+
   // Adaptation de l'angle en plage de pulsations pour Adafruit_ServoDriver
   uint16_t pulsation = map(angle, SERVO_MIN_ANGLE, SERVO_MAX_ANGLE, SERVO_PULSE_MIN, SERVO_PULSE_MAX);
   int analog_value = int(float(pulsation) / 1000000 * SERVO_FREQUENCY * 4096);
@@ -108,8 +114,7 @@ void ServoController::update() {
     case INIT_COMPLETE:
       // Gerer la desactivation automatique apres timeout
       if (servosEnabled && (currentTime - lastActivityTime >= SERVO_AUTO_DISABLE_TIMEOUT_MS)) {
-        disableServos();
-        servosEnabled = false;
+        disableServos();  // servosEnabled est deja mis a false dans disableServos()
         if (DEBUG) {
           Serial.println("[SERVO] Timeout - servos desactives");
         }
@@ -127,6 +132,14 @@ void ServoController::resetServosPosition() {
 }
 
 void ServoController::mute(uint8_t servoNum) {
+  if (servoNum >= NUM_SERVOS) {
+    if (DEBUG) {
+      Serial.print("[SERVO] ERREUR: index servo invalide: ");
+      Serial.println(servoNum);
+    }
+    return;
+  }
+
   enableServos();  // Activer avant de bouger (reinitialise aussi le timeout)
   setServoAngle(servoNum, initialAngles[servoNum]);
 }
@@ -149,31 +162,33 @@ void ServoController::disableServos() {
 
 //gratte la corde
 void ServoController::pluck(uint8_t servoNum) {
+  if (servoNum >= NUM_SERVOS) {
+    if (DEBUG) {
+      Serial.print("[SERVO] ERREUR: index servo invalide: ");
+      Serial.println(servoNum);
+    }
+    return;
+  }
+
   // Activer les servos avant de jouer
   enableServos();
 
-  // Actionne le servomoteur pour gratter la corde en fonction du dernier mouvement (position du pick)
-  bool isEvenServo = (servoNum % 2 == 0);
-  
-  if (currentPositions[servoNum] == 1) {
-    if (isEvenServo) {
-      setServoAngle(servoNum, initialAngles[servoNum] + PLUCK_ANGLE);  // Pour les servomoteurs pairs, inverse le sens de rotation à +20°
-    } else {
-      setServoAngle(servoNum, initialAngles[servoNum] - PLUCK_ANGLE);  // Pour les servomoteurs impairs, utilise -20°
-    }
-   // setServoAngle(servoNum, initialAngles[servoNum] - PLUCK_ANGLE);  // Pick contre la corde à -20°
-	  currentPositions[servoNum] = 0;
-  } else {
-if (isEvenServo) {
-      setServoAngle(servoNum, initialAngles[servoNum] - PLUCK_ANGLE);  // Pour les servomoteurs pairs, inverse le sens de rotation à -20°
-    } else {
-      setServoAngle(servoNum, initialAngles[servoNum] + PLUCK_ANGLE);  // Pour les servomoteurs impairs, utilise +20°
-    }	  currentPositions[servoNum] = 1;
+  // Calcul simplifie de la direction de grattage
+  // Position alterne entre 0 et 1, servos pairs/impairs ont des sens opposes
+  uint8_t position = (currentPositions >> servoNum) & 1;  // Extraire le bit correspondant
+  int8_t direction = (position == 1) ? 1 : -1;
+  if ((servoNum % 2) != 0) {
+    direction = -direction;  // Inverser pour les servos impairs
   }
+
+  setServoAngle(servoNum, initialAngles[servoNum] + (direction * PLUCK_ANGLE));
+
+  // Toggle la position (0 <-> 1) avec XOR
+  currentPositions ^= (1 << servoNum);
   if (DEBUG) {
     Serial.print("[SERVO] Pluck servo #");
     Serial.print(servoNum);
     Serial.print(" - position: ");
-    Serial.println(currentPositions[servoNum]);
+    Serial.println((currentPositions >> servoNum) & 1);
   } 
 }
