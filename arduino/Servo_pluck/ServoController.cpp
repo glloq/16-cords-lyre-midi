@@ -2,13 +2,26 @@
 #include "settings.h"
 
 ServoController::ServoController() {
-  pwm = Adafruit_PWMServoDriver(); 
-  if(pwm.begin()==false){
-    Serial.println("DEBUG :pca i2c not found");
+  pwm = Adafruit_PWMServoDriver();
+  if(pwm.begin() == false){
+    Serial.println("ERREUR CRITIQUE: PCA9685 non detecte sur le bus I2C!");
+    Serial.println("Verifiez les connexions et l'adresse I2C.");
+    while(1) {  // Bloquer l'execution
+      delay(1000);
+    }
   }
-  pwm.setOscillatorFrequency(27000000);
+  pwm.setOscillatorFrequency(PCA9685_OSCILLATOR_FREQ);
   pwm.setPWMFreq(SERVO_FREQUENCY);
-  resetServosPosition();
+
+  // Initialiser le tableau currentPositions
+  for (uint8_t i = 0; i < NUM_SERVOS; i++) {
+    currentPositions[i] = 0;
+  }
+
+  // Demarrer l'initialisation non-bloquante
+  initState = INIT_OPENING;
+  initServoIndex = 0;
+  initLastTime = millis();
 }
 
 void ServoController::setServoAngle(uint8_t servoNum, uint16_t angle) {
@@ -18,34 +31,82 @@ void ServoController::setServoAngle(uint8_t servoNum, uint16_t angle) {
   pwm.setPWM(servoNum, 0, analog_value);
 }
 
+void ServoController::update() {
+  // Machine a etats pour l'initialisation non-bloquante
+  unsigned long currentTime = millis();
+
+  switch (initState) {
+    case INIT_OPENING:
+      // Deplacer le servo actuel en position d'ouverture
+      if (initServoIndex % 2 == 0) {
+        setServoAngle(initServoIndex, initialAngles[initServoIndex] + PLUCK_ANGLE);
+      } else {
+        setServoAngle(initServoIndex, initialAngles[initServoIndex] - PLUCK_ANGLE);
+      }
+      if (DEBUG) {
+        Serial.print("[SERVO] Initialisation servo #");
+        Serial.print(initServoIndex);
+        Serial.println(" - position ouverture");
+      }
+      initLastTime = currentTime;
+      initState = INIT_WAIT_OPENING;
+      break;
+
+    case INIT_WAIT_OPENING:
+      // Attendre que le servo se deplace
+      if (currentTime - initLastTime >= SERVO_INIT_DELAY_MS) {
+        initServoIndex++;
+        if (initServoIndex >= NUM_SERVOS) {
+          // Tous les servos sont en position d'ouverture, passer a la fermeture
+          initServoIndex = 0;
+          initState = INIT_CLOSING;
+        } else {
+          initState = INIT_OPENING;
+        }
+      }
+      break;
+
+    case INIT_CLOSING:
+      // Remettre le servo en position de repos
+      setServoAngle(initServoIndex, initialAngles[initServoIndex]);
+      if (DEBUG) {
+        Serial.print("[SERVO] Servo #");
+        Serial.print(initServoIndex);
+        Serial.println(" - position repos");
+      }
+      initLastTime = currentTime;
+      initState = INIT_WAIT_CLOSING;
+      break;
+
+    case INIT_WAIT_CLOSING:
+      // Attendre que le servo se deplace
+      if (currentTime - initLastTime >= SERVO_RESET_DELAY_MS) {
+        initServoIndex++;
+        if (initServoIndex >= NUM_SERVOS) {
+          // Initialisation complete
+          initState = INIT_COMPLETE;
+          if (DEBUG) {
+            Serial.println("[SERVO] Tous les servos sont initialises");
+          }
+        } else {
+          initState = INIT_CLOSING;
+        }
+      }
+      break;
+
+    case INIT_IDLE:
+    case INIT_COMPLETE:
+      // Ne rien faire
+      break;
+  }
+}
+
+bool ServoController::isInitComplete() {
+  return (initState == INIT_COMPLETE);
+}
+
 void ServoController::resetServosPosition() {
-  // Utilisé au démarrage pour déplacer les servos en position initiale de grattage
-    bool isEven;
-  for (uint8_t i = 0; i < NUM_SERVOS; ++i) {
-    isEven = (i % 2 == 0);
-    if (isEven) {
-      setServoAngle(i, initialAngles[i] + PLUCK_ANGLE);  // Pour les servomoteurs pairs, inverse le sens de rotation à +20°
-    } else {
-      setServoAngle(i, initialAngles[i] - PLUCK_ANGLE);  // Pour les servomoteurs impairs, utilise -20°
-    }
-    //setServoAngle(i, initialAngles[i] - PLUCK_ANGLE);
-	  delay(500); // délai pour laisser les servos se déplacer
-    if (DEBUG) {
-      Serial.print("DEBUG :reset ouverture servo");
-      Serial.println(i);
-    } 
-  }
-  // Puis en position initiale pour initialiser les positions du tableau à 0
-  for (uint8_t i = 0; i < NUM_SERVOS; ++i) {
-    setServoAngle(i, initialAngles[i]);
-	  delay(100); //  délai pour laisser les servos se déplacer
-    if (DEBUG) {
-    Serial.print("DEBUG :reset fermeture servo");
-    Serial.println(i);  } 
-  }
-  if (DEBUG) {
-    Serial.println("DEBUG : servoController--init done");
-  } 
+  // Methode legacy - plus utilisee avec le systeme non-bloquant
 }
 
 void ServoController::mute(uint8_t servoNum) {
@@ -71,9 +132,11 @@ if (isEvenServo) {
     } else {
       setServoAngle(servoNum, initialAngles[servoNum] + PLUCK_ANGLE);  // Pour les servomoteurs impairs, utilise +20°
     }	  currentPositions[servoNum] = 1;
-  } 
+  }
   if (DEBUG) {
-    Serial.print("DEBUG : pluck servo");
-    Serial.println(servoNum);
+    Serial.print("[SERVO] Pluck servo #");
+    Serial.print(servoNum);
+    Serial.print(" - position: ");
+    Serial.println(currentPositions[servoNum]);
   } 
 }

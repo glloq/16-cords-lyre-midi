@@ -7,14 +7,22 @@
 class ServoController {
 private:
   Adafruit_PWMServoDriver pwm;
-  int16_t currentPositions[NUM_SERVOS];  // Tableau pour stocker le dernier mouvement 0 => -20° , 1=>+20° (pour 20° de jeu de chaque coté)
+  int16_t currentPositions[NUM_SERVOS];  // Tableau pour stocker le dernier mouvement 0 => -20° , 1=>+20°
   void setServoAngle(uint8_t servoNum, uint16_t angle);
-  void resetServosPosition();// utilisé au demarrage pour deplacer les servos en position init-angle grattage puis en position init pour initiliser les position du tableau a 0
+  void resetServosPosition();  // Utilise au demarrage pour deplacer les servos en position init
+
+  // Variables pour l'initialisation non-bloquante
+  enum InitState { INIT_IDLE, INIT_OPENING, INIT_WAIT_OPENING, INIT_CLOSING, INIT_WAIT_CLOSING, INIT_COMPLETE };
+  InitState initState;
+  uint8_t initServoIndex;
+  unsigned long initLastTime;
 
 public:
-  ServoController(); //initialise toutles servomoteurs et le tableau
-  void mute(uint8_t servoNum); // met le servo a l'angle d'initilisation contre la corde 
-  void pluck(uint8_t servoNum);// actionne le servo pour gratter la corde et alterne le gratage en utilisant le tableau currentPositions pour le sens de grattage 
+  ServoController();  // Initialise tous les servomoteurs et le tableau
+  void update();  // A appeler dans loop() pour gerer l'initialisation non-bloquante
+  bool isInitComplete();  // Retourne true quand l'initialisation est terminee
+  void mute(uint8_t servoNum);  // Met le servo a l'angle d'initialisation contre la corde
+  void pluck(uint8_t servoNum);  // Actionne le servo pour gratter la corde
 };
 
 #endif // SERVOCONTROLLER_H
