@@ -14,20 +14,22 @@ Un autre fichier .ino sera fournit afin d'initialiser les servo a 90° lors du m
 #include "MidiHandler.h"
 #include "Arduino.h"
 
-Instrument* instrument= nullptr;
-MidiHandler* midiHandler= nullptr;
+Instrument instrument;
+MidiHandler* midiHandler = nullptr;
 
 void setup() {
-  Serial.begin(115200);
- // while (!Serial) {
-  //  delay(10); // Attendre que la connexion série soit établie
-  //}
+  Serial.begin(SERIAL_BAUD_RATE);
   Serial.println("init");
-  instrument= new Instrument();
-  midiHandler = new MidiHandler(*instrument);
+  midiHandler = new MidiHandler(instrument);
   Serial.println("fin init");
 }
 
 void loop() {
-  midiHandler->readMidi();
+  // Mettre a jour l'instrument (gestion de l'initialisation non-bloquante)
+  instrument.update();
+
+  // Lire et traiter les messages MIDI seulement si l'instrument est pret
+  if (instrument.isReady()) {
+    midiHandler->readMidi();
+  }
 }
