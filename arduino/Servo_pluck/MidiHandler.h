@@ -7,24 +7,52 @@
 ----------------------------    MIDI message handler    ----------------------------------------
 ************************************************************************************************
 Recoit les messages midi et les envoit a l'instrument via les methodes .noteOn, .noteOff, ect ...
-l'objectif est d'etre le plus complet au niveau de la selection des messages qui peuvent etre envoyé via MIDI
--messages de note On 
--message de note Off
--Message de Pitch Bend : Utilisé pour moduler la hauteur tonale d'une note en temps réel. Il est souvent généré par une molette de pitch sur un contrôleur MIDI.
--Message de Channel Pressure (Aftertouch) : Indique la pression appliquée à une seule note après qu'elle a été enfoncée. Cela peut être utilisé pour moduler divers paramètres.
--Message de Polyphonic Key Pressure : Similaire au message de Channel Pressure, mais il permet une pression individuelle sur chaque note d'un clavier polyphonique.
--Message de System Common : Comprend des messages qui affectent l'ensemble du système MIDI, tels que les messages de démarrage, d'arrêt et d'horloge.
--Message de System Real-Time : Comprend des messages qui sont transmis en temps réel pour synchroniser les appareils MIDI, tels que les messages de synchronisation d'horloge.
--Message de System Exclusive (SysEx) : Utilisé pour transmettre des données spécifiques au fabricant et aux modèles d'équipements MIDI. Ces messages peuvent être très variés et personnalisés.
-------------------------------------------------------------------------------------------------
-Chaque fonction qui peut etre utilisé doit etre decommenté et déclaré dans instrument.h 
+
+Supporte le protocole MidiMind SysEx pour l'identification de l'instrument:
+- Block 1: Identification (nom, notes jouables, polyphonie)
+- Block 2: Capacites avancees (CC, aftertouch, pitch bend, etc.)
 ************************************************************************************************/
+
+// Constantes MidiMind SysEx Protocol
+#define MIDIMIND_MANUFACTURER_ID  0x7D  // Educational/Development
+#define MIDIMIND_SUB_ID           0x00  // MidiMind
+#define MIDIMIND_BLOCK1_ID        0x01  // Block 1: Identification
+#define MIDIMIND_BLOCK2_ID        0x02  // Block 2: Capacites
+#define MIDIMIND_REQUEST_TYPE     0x00  // Request
+#define MIDIMIND_REPLY_TYPE       0x01  // Reply
+#define MIDIMIND_VERSION          0x01  // Version 1.0
+
+// Configuration instrument pour MidiMind
+#define INSTRUMENT_NAME           "Lyre 16 cordes"
+#define INSTRUMENT_GM_PROGRAM     46    // Harp
+#define INSTRUMENT_POLYPHONY      16
+#define INSTRUMENT_FIRST_NOTE     55    // G3 (pour info, bitmap utilise)
+#define INSTRUMENT_NOTE_COUNT     16    // 16 notes
+
+// Buffer SysEx
+#define SYSEX_BUFFER_SIZE         64
 
 class MidiHandler {
   private:
     Instrument& _instrument;
+
+    // Buffer pour accumulation SysEx
+    byte sysexBuffer[SYSEX_BUFFER_SIZE];
+    uint8_t sysexIndex;
+    bool sysexActive;
+
     void processMidiEvent(midiEventPacket_t midiEvent);
-    void processControlChange( byte controller, byte value);
+    void processControlChange(byte controller, byte value);
+
+    // MidiMind SysEx handlers
+    void processSysExPacket(midiEventPacket_t packet);
+    void processSysExMessage();
+    void sendBlock1Reply();
+    void sendBlock2Reply();
+    void sendSysEx(const byte* data, uint8_t length);
+    void encode7BitBitmap(const byte* bitmap16, byte* encoded19);
+    void buildNoteBitmap(byte* bitmap16);
+
   public:
     MidiHandler(Instrument &instrument);
     void readMidi();
