@@ -154,7 +154,7 @@ void processMIDIMessage(uint8_t* data, size_t length) {
           Serial.println("   → Servo jouerait cette note");
 
           if (feedbackEnabled) {
-            delay(10);
+            delay(2);  // Réduit à 2ms pour réactivité
             sendNoteOn(note, velocity, channel);
             Serial.println("   ✓ Feedback envoyé");
           }
@@ -162,7 +162,7 @@ void processMIDIMessage(uint8_t* data, size_t length) {
           stats.noteOffReceived++;
           Serial.println("   (velocity 0 = Note Off)");
           if (feedbackEnabled) {
-            delay(10);
+            delay(2);  // Réduit à 2ms pour réactivité
             sendNoteOff(note, channel);
           }
         }
@@ -180,7 +180,7 @@ void processMIDIMessage(uint8_t* data, size_t length) {
         Serial.println("   → Servo reviendrait au repos");
 
         if (feedbackEnabled) {
-          delay(10);
+          delay(2);  // Réduit à 2ms pour réactivité
           sendNoteOff(note, channel);
           Serial.println("   ✓ Feedback envoyé");
         }
@@ -219,7 +219,7 @@ void processMIDIMessage(uint8_t* data, size_t length) {
       if (length >= 7 && data[2] == 0xF0 && data[3] == 0x7E && data[5] == 0x06 && data[6] == 0x01) {
         Serial.println("   → Identity Request détecté!");
         Serial.println("   → Envoi Identity Reply...");
-        delay(10);
+        delay(2);  // Réduit à 2ms pour réactivité
         sendIdentityReply();
       }
       break;
@@ -251,9 +251,9 @@ class MyServerCallbacks: public BLEServerCallbacks {
       Serial.println("║   ✓✓✓ CONNEXION ETABLIE ✓✓✓      ║");
       Serial.println("╚═══════════════════════════════════╝\n");
 
-      delay(100);
+      delay(10);  // Réduit à 10ms pour connexion rapide
       sendConnectionStatus(true);
-      delay(50);
+      delay(5);   // Réduit à 5ms
       sendIdentityReply();
     };
 
@@ -421,7 +421,7 @@ SETUP
 
 void setup() {
   Serial.begin(SERIAL_BAUD_RATE);
-  delay(2000);
+  delay(500);  // Réduit de 2000 à 500ms pour démarrage rapide
 
   Serial.println("\n\n");
   Serial.println("╔════════════════════════════════════════════════════╗");
@@ -459,11 +459,17 @@ void setup() {
 
   BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
   pAdvertising->addServiceUUID(SERVICE_UUID);
-  pAdvertising->setScanResponse(false);
-  pAdvertising->setMinPreferred(0x06);
+  pAdvertising->setScanResponse(true);  // Active scan response
+
+  // OPTIMISATION APPAIRAGE RAPIDE
+  pAdvertising->setMinInterval(0x20);   // 20ms (rapide)
+  pAdvertising->setMaxInterval(0x40);   // 40ms
+  pAdvertising->setMinPreferred(0x06);  // 7.5ms connexion
+  pAdvertising->setMaxPreferred(0x0C);  // 15ms max
+
   pAdvertising->start();
 
-  Serial.println("[BLE] ✓ Service MIDI actif");
+  Serial.println("[BLE] ✓ Service MIDI actif (appairage optimisé)");
   Serial.printf("[BLE] Nom: %s\n", BLE_DEVICE_NAME);
   Serial.println("═══════════════════════════════════════════════════════");
   Serial.println();
