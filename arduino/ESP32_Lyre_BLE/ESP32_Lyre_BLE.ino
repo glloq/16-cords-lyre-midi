@@ -131,10 +131,12 @@ void processMIDIMessage(uint8_t* data, size_t length) {
 
 class MyCallbacks: public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic *pCharacteristic) {
-      std::string value = pCharacteristic->getValue();
+      // Compatible avec toutes versions BLE ESP32
+      uint8_t* data = pCharacteristic->getData();
+      size_t length = pCharacteristic->getValue().length();
 
-      if (value.length() > 0) {
-        processMIDIMessage((uint8_t*)value.data(), value.length());
+      if (length > 0) {
+        processMIDIMessage(data, length);
       }
     }
 };
